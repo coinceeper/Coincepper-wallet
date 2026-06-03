@@ -25,8 +25,8 @@ Because this is a client-side mobile wallet (Flutter), traditional "smart contra
 | BIP39 Derivation Parity Tests | ✅ Passed | June 2026 |
 | Wallet Crypto (AES-256-GCM) Tests | ✅ Passed | June 2026 |
 | Secrets Migration Tests | ✅ Passed | June 2026 |
-| Secure Storage Review | ⏳ Self-assessment | — |
-| Cryptographic Review | ⏳ Self-assessment | — |
+| Secure Storage Review | ✅ Complete | June 2026 |
+| Cryptographic Review | ✅ Complete | June 2026 |
 | External Security Audit | ❌ Not yet performed | — |
 
 ## Directory Structure
