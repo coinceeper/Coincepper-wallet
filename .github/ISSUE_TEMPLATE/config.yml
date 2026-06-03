@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security Issue
+    url: mailto:security@coinceeper.com
+    about: Please report security vulnerabilities here
+  - name: Documentation
+    url: https://github.com/coinceeper/Coincepper-wallet#readme
+    about: Check the README for documentation
