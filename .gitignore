@@ -1,0 +1,112 @@
+# =============================================================
+# CoinCeeper Wallet — Open Source Edition .gitignore
+# =============================================================
+
+# ========================
+# SECRETS — NEVER COMMIT
+# ========================
+secrets/
+.env
+.env.local
+*.env
+ios/Flutter/DartDefines.xcconfig
+android/key.properties
+*.jks
+*.keystore
+*.pfx
+*.p12
+*.p8
+*firebase-adminsdk*.json
+service-account*.json
+keystore password.md
+
+# ========================
+# Build outputs
+# ========================
+/build/
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+/android/.gradle/
+**/windows/flutter/ephemeral/
+**/linux/flutter/ephemeral/
+**/macos/Flutter/ephemeral/
+**/ios/Flutter/.last_build_id
+.windows/
+.linux/
+.macos/
+
+# ========================
+# IDE & Editor
+# ========================
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.atom/
+.DS_Store
+*.swp
+*.swo
+
+# ========================
+# Dart & Flutter
+# ========================
+.dart_tool/
+.pub-cache/
+.pub/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.log
+*.class
+*.pyc
+migrate_working_dir/
+
+# ========================
+# Symbolication / Obfuscation
+# ========================
+app.*.symbols
+app.*.map.json
+
+# ========================
+# Platform-specific generated
+# ========================
+**/flutter/ephemeral/
+.windows/
+.linux/
+.macos/
+
+# ========================
+# Dependencies
+# ========================
+.packages
+.pub/
+build/
+
+# ========================
+# TSP Desktop sidecar (locally built)
+# ========================
+sidecar/tsp_agent
+sidecar/tsp_agent.exe
+sidecar/tsp_agent.arm64
+
+# ========================
+# MSIX installer artifacts
+# ========================
+windows/msix_signing.pfx
+windows/msix_signing.cer
+
+# ========================
+# Backend code (private — not part of this repo)
+# ========================
+backend/
+backend cc/
+dist/
+smart-contracts/
+
+# ========================
+# Local tooling
+# ========================
+.tools/
+Users/
+agent/

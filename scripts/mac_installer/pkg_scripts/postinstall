@@ -1,0 +1,10 @@
+#!/bin/bash
+# Run as root after payload is installed to /Applications
+set -e
+APP="/Applications/coinceeper.app"
+if [[ ! -d "$APP" ]]; then
+  exit 0
+fi
+/usr/bin/xattr -dr com.apple.quarantine "$APP" 2>/dev/null || true
+/bin/chmod -R +x "$APP" 2>/dev/null || true
+exit 0

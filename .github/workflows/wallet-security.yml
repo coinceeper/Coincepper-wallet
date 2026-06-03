@@ -1,0 +1,37 @@
+name: wallet-security
+
+on:
+  push:
+    paths:
+      - 'lib/services/build_secrets.dart'
+      - 'lib/services/wallet_secrets_store.dart'
+      - 'lib/services/tls_pinning.dart'
+      - 'scripts/**'
+      - 'android/app/build.gradle.kts'
+      - 'test/wallet_secrets_migration_test.dart'
+  pull_request:
+    paths:
+      - 'lib/services/build_secrets.dart'
+      - 'lib/services/wallet_secrets_store.dart'
+      - 'lib/services/tls_pinning.dart'
+      - 'scripts/**'
+      - 'android/app/build.gradle.kts'
+      - 'test/wallet_secrets_migration_test.dart'
+
+jobs:
+  secrets-and-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate build secrets (repository secrets)
+        env:
+          CLIENT_HMAC_SECRET: ${{ secrets.CLIENT_HMAC_SECRET }}
+          TLS_PIN_SHA256: ${{ secrets.TLS_PIN_SHA256 }}
+        run: bash scripts/validate_wallet_build_secrets.sh
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Wallet secrets migration tests
+        run: |
+          flutter pub get
+          flutter test test/wallet_secrets_migration_test.dart

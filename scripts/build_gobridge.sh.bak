@@ -1,0 +1,372 @@
+#!/usr/bin/env bash
+# خروجی استاندارد آزمون:
+#   Android: jniLibs: libtspagent_jni.so همیشه؛ libtspagent.so یا همان‌جا یا فقط assets (رمز + TSP_OMIT_JNILIBS_TSPAGENT)
+#   iOS:     agent/.build/ios/TspAgent.xcframework  (لینک در Xcode؛ embed برای استاتیک = Do Not Embed)
+#
+#   ./scripts/build_gobridge.sh
+#   ./scripts/build_gobridge.sh --android-only
+#   ./scripts/build_gobridge.sh --ios-only
+#   ./scripts/build_gobridge.sh --hardened   # profile: garble + external link + strict checks
+#
+# O-MVLL (اختیاری، LLVM obfuscation برای کد Native تولیدشده توسط cgo):
+#   اگر یک clang سفارشی که پلاگین O-MVLL را لود می‌کند داشته باشید، فقط لازم است به‌عنوان
+#   کامپایلر cgo همان Go استفاده شود. مثال:
+#     export TSP_OMVLL_CGO_CC="/path/to/omvll-ndk-clang"
+#     export TSP_OMVLL_CGO_CC_IOS="..."   # اختیاری: دستگاه واقعی
+#     export TSP_OMVLL_CGO_CC_IOSSIM="..."  # اختیاری: شبیه‌ساز
+#   (پیکربند یAML O-MVLL جداست؛ نصب/ساخت باینری O-MVLL/NDK به محیط شما وابسته است.)
+#   wrapper بدون منطق اضافه: ./scripts/omvll_cgo.sh  (اختیاری: TSP_OMVLL_ENV_FILE)
+#
+# پنهان‌سازی .so (هدف: استخراج/تحلیل سخت‌تر):
+#   - همیشه: -s -w -trimpath روی go، llvm-strip، version script (فقط JNI_OnLoad)
+#   - اختیاری: TSP_USE_GARBLE=1  →  garble (نیاز: go install mvdan.cc/garble@latest)
+#   - اختیاری: TSP_HARDENED=1 یا --hardened → اجباری‌سازی ابزارهای سخت‌سازی (garble/OMVLL policy)
+#   - اختیاری: TSP_USE_TINYGO=1   → TinyGo برای build libtspagent (experimental؛ c-shared نیازمند TSP_ALLOW_EXPERIMENTAL_TINYGO_CSHARED=1)
+#   - اختیاری: TSP_NO_STRIP=1     →  بدون llvm-strip
+#   - رمز lib در assets: TSP_TSPAGENT_TO_ASSETS=1 TSP_LIB_XOR_KEY=... (۶۴ هگز) + ./scripts/encrypt_jni_tspagent.sh
+#     + در Gradle: -PTSP_LIB_XOR_KEY=... — خروجی در assets/tspn/<abi>/libtspagent.dat؛ سپس TSP_OMIT_JNILIBS_TSPAGENT=1
+#   - همگن‌سازی باینری: چند DSO/آرشیو را به یک شِل app لینک کنید (مثلاً .a اضافه) تا امضا یکتا نشود
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+AGENT_DIR="$ROOT/agent"
+OUT_ANDROID="$AGENT_DIR/.build/android"
+OUT_IOS="$AGENT_DIR/.build/ios"
+CPP_DIR="$ROOT/android/app/src/main/cpp"
+JNILIBS="$ROOT/android/app/src/main/jniLibs"
+AGENT_MODULE="github.com/tsp-platform/agent"
+MOBILE_MAIN_SUBPKG="./cmd/mobilehost"
+LIB_GO="libtspagent.so"
+LIB_JNI="libtspagent_jni.so"
+# پیش‌فرض: JNI به libtspagent لینک نمی‌شود؛ نمادها با dlsym بعد از System.load. برای حالت قدیمی: TSP_JNI_LINK_TSPAGENT=1
+LINK_TSP_ARGS=()
+# لینک go (کاهش .gosymtab/دیباگ؛ pclntab کامل require garble یا لینک خارجی)
+# NOTE: -trimpath is a go build flag, not a linker flag; keep ldflags linker-safe.
+GOLDFLAGS_STRIP='-s -w -buildid='
+GOLDFLAGS_EXTLD=''
+# در صورت نیاز به -linkmode=external برای extld: روی بعضی جعبه‌ها break می‌کند
+if [[ -n "${TSP_GO_EXTLD:-}" ]]; then
+  GOLDFLAGS_EXTLD=" -linkmode=external -extldflags=-Wl,-s"
+fi
+GOLDFLAGS="${GOLDFLAGS_STRIP}${GOLDFLAGS_EXTLD}" # EXTLD خالی یا با leading space
+
+if [[ ! -d "$AGENT_DIR/cmd/mobilehost" ]]; then
+  echo "error: $AGENT_DIR/cmd/mobilehost not found"
+  exit 1
+fi
+
+DO_ANDROID=1
+DO_IOS=1
+HARDENED=0
+for arg in "$@"; do
+  case "$arg" in
+    --android-only) DO_IOS=0 ;;
+    --ios-only) DO_ANDROID=0 ;;
+    --hardened) HARDENED=1 ;;
+    --help|-h) head -n 18 "$0" | tail -n 8; exit 0 ;;
+  esac
+done
+if [[ "${TSP_HARDENED:-0}" == "1" ]]; then
+  HARDENED=1
+fi
+
+require_tool() {
+  local t="$1"
+  command -v "$t" >/dev/null 2>&1 || {
+    echo "error: required tool not found: $t" >&2
+    exit 1
+  }
+}
+
+if [[ "$HARDENED" -eq 1 ]]; then
+  : "${TSP_USE_GARBLE:=1}"
+  : "${TSP_GO_EXTLD:=1}"
+  export TSP_USE_GARBLE TSP_GO_EXTLD
+  echo "==> hardened profile enabled (garble/extld + strict checks)"
+  require_tool go
+  if [[ "${TSP_USE_TINYGO:-0}" == "1" ]]; then
+    require_tool tinygo
+  fi
+  if [[ "${TSP_USE_GARBLE:-0}" == "1" ]]; then
+    require_tool garble
+  fi
+  if [[ -z "${TSP_OMVLL_CGO_CC:-}" && -z "${TSP_OMVLL_CGO_CC_IOS:-}" && -z "${TSP_OMVLL_CGO_CC_IOSSIM:-}" ]]; then
+    echo "warn: hardened requested but O-MVLL compiler wrapper env is not set (TSP_OMVLL_CGO_CC*)"
+  fi
+fi
+
+if [[ "$DO_ANDROID" -eq 1 || "$DO_IOS" -eq 1 ]]; then
+  command -v go >/dev/null 2>&1 || { echo "error: go is required. Install: https://go.dev/dl/"; exit 1; }
+fi
+
+mkdir -p "$OUT_ANDROID" "$OUT_IOS" "$JNILIBS"
+
+# Pick obfuscating cgo CC when set, else the default (NDK/Xcode) clang.
+pick_omvll_cgo_cc() {
+  local default_cc="$1"
+  local ovr="${2:-}"
+  if [[ -n "$ovr" && -x "$ovr" ]]; then
+    echo "$ovr"
+  else
+    echo "$default_cc"
+  fi
+}
+
+regenerate_header_from_host() {
+  echo "==> (optional) host c-shared → libtspagent.h (compare با agent/include/tspagent_api.h)"
+  local hdir
+  hdir="$(mktemp -d /tmp/tspag_hdr.XXXXXX)"
+  (
+    cd "$AGENT_DIR"
+    CGO_ENABLED=1 go build -buildmode=c-shared -ldflags "$GOLDFLAGS" -o "$hdir/$LIB_GO" $MOBILE_MAIN_SUBPKG
+  ) || true
+  if [[ -f "$hdir/libtspagent.h" ]]; then
+    echo "  see: $hdir/libtspagent.h"
+  fi
+  rm -rf "$hdir"
+}
+
+build_android_abi() {
+  local goarch=$1
+  local android_abi=$2
+  local NDK_ROOT=$3
+  local min_api=26
+  # Google Play / Android 15+ 16 KB page devices: LOAD segments must align to 2**14 (see
+  # https://developer.android.com/guide/practices/page-sizes ). Skip with TSP_SKIP_ANDROID_16K_ALIGN=1.
+  local wl_16k=()
+  local go_ld_android="$GOLDFLAGS"
+  if [[ "${TSP_SKIP_ANDROID_16K_ALIGN:-0}" != "1" ]]; then
+    wl_16k=(-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384)
+    # Single -Wl,... bundle: repeating "-Wl," inside -extldflags breaks lld ("unknown argument '-Wl'").
+    if [[ -n "${TSP_GO_EXTLD:-}" ]]; then
+      go_ld_android="${GOLDFLAGS_STRIP} -linkmode=external -extldflags=-Wl,-s,-z,max-page-size=16384,-z,common-page-size=16384"
+    else
+      go_ld_android="${GOLDFLAGS_STRIP} -linkmode=external -extldflags=-Wl,-z,max-page-size=16384,-z,common-page-size=16384"
+    fi
+  fi
+  local prebuilt
+  prebuilt=$(find "$NDK_ROOT/toolchains/llvm/prebuilt" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | head -1) || {
+    echo "error: NDK prebuilt not under $NDK_ROOT/toolchains/llvm/prebuilt"
+    return 1
+  }
+  local clang_prefix
+  case "$goarch" in
+    arm64) clang_prefix=aarch64-linux-android ;;
+    arm)   clang_prefix=armv7a-linux-androideabi ;;
+    386)   clang_prefix=i686-linux-android ;;
+    amd64) clang_prefix=x86_64-linux-android ;;
+    *) echo "error: unknown goarch $goarch"; return 1 ;;
+  esac
+  local clang="${prebuilt}/bin/${clang_prefix}${min_api}-clang"
+  if [[ ! -x "$clang" ]]; then
+    echo "error: not executable: $clang"
+    return 1
+  fi
+  local cc_go
+  cc_go="$(pick_omvll_cgo_cc "$clang" "${TSP_OMVLL_CGO_CC:-}")"
+  echo "==> android $goarch / $android_abi  (cgo: $cc_go; jni .c: $clang)"
+  mkdir -p "$OUT_ANDROID/$android_abi" "$JNILIBS/$android_abi"
+  local gocmd=(go)
+  if [[ "${TSP_USE_TINYGO:-0}" == "1" ]]; then
+    if [[ "${TSP_ALLOW_EXPERIMENTAL_TINYGO_CSHARED:-0}" != "1" ]]; then
+      echo "error: tinygo c-shared for Android is experimental; set TSP_ALLOW_EXPERIMENTAL_TINYGO_CSHARED=1 explicitly"
+      return 1
+    fi
+    command -v tinygo >/dev/null 2>&1 || { echo "error: tinygo not found"; return 1; }
+    gocmd=(tinygo)
+    echo "  (TspAgent) using tinygo for $goarch (EXPERIMENTAL c-shared path)"
+  elif [[ -n "${TSP_USE_GARBLE:-}" ]] && command -v garble >/dev/null 2>&1; then
+    gocmd=(garble)
+    echo "  (TspAgent) using garble for $goarch (تست c-shared را بعد از build انجام دهید)"
+  elif [[ -n "${TSP_USE_GARBLE:-}" ]]; then
+    echo "warning: TSP_USE_GARBLE set but garble not found; plain go"
+  fi
+  (
+    cd "$AGENT_DIR"
+    if [[ "${gocmd[0]}" == "tinygo" ]]; then
+      CGO_ENABLED=1 GOOS=android GOARCH="$goarch" CC="$cc_go" \
+        tinygo build -buildmode=c-shared -ldflags "$GOLDFLAGS" \
+        -o "$OUT_ANDROID/$android_abi/$LIB_GO" $MOBILE_MAIN_SUBPKG
+    else
+      CGO_ENABLED=1 GOOS=android GOARCH="$goarch" CC="$cc_go" \
+        "${gocmd[@]}" build -buildmode=c-shared -ldflags "$go_ld_android" \
+        -o "$OUT_ANDROID/$android_abi/$LIB_GO" $MOBILE_MAIN_SUBPKG
+    fi
+  )
+  local stripper="${prebuilt}/bin/llvm-strip"
+  if [[ -z "${TSP_NO_STRIP:-}" && -x "$stripper" ]]; then
+    "$stripper" --strip-all "$OUT_ANDROID/$android_abi/$LIB_GO" 2>/dev/null || true
+  fi
+  local lds_jni="${CPP_DIR}/tspagent_jni.lds"
+  local lds_args=()
+  if [[ -f "$lds_jni" ]]; then
+    lds_args=(-Wl,--version-script="$lds_jni")
+  fi
+  local LINK_TSP_ARGS=()
+  if [[ "${TSP_JNI_LINK_TSPAGENT:-0}" == "1" ]]; then
+    LINK_TSP_ARGS=(-L"$OUT_ANDROID/$android_abi" -ltspagent)
+  fi
+  # visibility + حذف re-export از وابستگی: فقط نمادهای لازم در مرز DSO
+  "$clang" -fvisibility=hidden -fPIC -shared -o "$OUT_ANDROID/$android_abi/$LIB_JNI" \
+    "${lds_args[@]}" \
+    -Wl,-Bsymbolic -Wl,--exclude-libs,ALL \
+    "${wl_16k[@]}" \
+    -I"$AGENT_DIR/include" -I"$CPP_DIR" \
+    "$CPP_DIR/tspagent_jni.c" \
+    "${LINK_TSP_ARGS[@]-}" \
+    -Wl,-rpath='$$ORIGIN' -llog -ldl
+  if [[ -z "${TSP_NO_STRIP:-}" && -x "$stripper" ]]; then
+    "$stripper" --strip-all "$OUT_ANDROID/$android_abi/$LIB_JNI" 2>/dev/null || true
+  fi
+  cp -f "$OUT_ANDROID/$android_abi/$LIB_GO" "$JNILIBS/$android_abi/"
+  cp -f "$OUT_ANDROID/$android_abi/$LIB_JNI" "$JNILIBS/$android_abi/"
+}
+
+parse_android_abi_pairs() {
+  local abi_csv="${TSP_ANDROID_ABIS:-arm64-v8a,armeabi-v7a}"
+  local IFS=','
+  local raw_abis=()
+  read -r -a raw_abis <<< "$abi_csv"
+  local abi
+  local trimmed
+  local pairs=()
+  for abi in "${raw_abis[@]}"; do
+    trimmed="$(echo "$abi" | tr -d '[:space:]')"
+    [[ -z "$trimmed" ]] && continue
+    case "$trimmed" in
+      arm64-v8a) pairs+=("arm64:arm64-v8a") ;;
+      armeabi-v7a) pairs+=("arm:armeabi-v7a") ;;
+      x86) pairs+=("386:x86") ;;
+      x86_64) pairs+=("amd64:x86_64") ;;
+      *)
+        echo "error: unsupported ABI in TSP_ANDROID_ABIS: $trimmed" >&2
+        echo "       supported values: arm64-v8a, armeabi-v7a, x86, x86_64" >&2
+        exit 1
+        ;;
+    esac
+  done
+  if [[ "${#pairs[@]}" -eq 0 ]]; then
+    echo "error: TSP_ANDROID_ABIS resolved to empty ABI list" >&2
+    exit 1
+  fi
+  echo "${pairs[@]}"
+}
+
+if [[ "$DO_ANDROID" -eq 1 ]]; then
+  if [[ -n "${ANDROID_NDK_HOME:-}" ]]; then
+    NDK="${ANDROID_NDK_HOME}"
+  elif [[ -n "${NDK:-}" ]]; then
+    NDK="${NDK}"
+  else
+    echo "error: ANDROID_NDK_HOME (or NDK) must be set for Android native build"
+    exit 1
+  fi
+  [[ -d "$NDK" ]] || { echo "error: NDK path missing: $NDK"; exit 1; }
+  regenerate_header_from_host
+  read -r -a ANDROID_ABI_PAIRS <<< "$(parse_android_abi_pairs)"
+  echo "==> Android ABIs: ${TSP_ANDROID_ABIS:-arm64-v8a,armeabi-v7a}"
+  for pair in "${ANDROID_ABI_PAIRS[@]}"; do
+    g="${pair%%:*}"
+    a="${pair##*:}"
+    build_android_abi "$g" "$a" "$NDK" || exit 1
+  done
+  echo "==> Android jniLibs: $LIB_GO + $LIB_JNI  ($AGENT_MODULE)"
+  ls -la "$JNILIBS"/*/ 2>/dev/null | head -20 || true
+  if [[ "${TSP_TSPAGENT_TO_ASSETS:-0}" == "1" ]]; then
+    if [[ -z "${TSP_LIB_XOR_KEY:-}" || ${#TSP_LIB_XOR_KEY} -lt 32 ]]; then
+      echo "error: TSP_TSPAGENT_TO_ASSETS=1 needs TSP_LIB_XOR_KEY (>=32 hex chars)" >&2
+      exit 1
+    fi
+    ASSET_ROOT="$ROOT/android/app/src/main/assets/tspn"
+    for pair in "${ANDROID_ABI_PAIRS[@]}"; do
+      a="${pair##*:}"
+      f="$OUT_ANDROID/$a/$LIB_GO"
+      if [[ -f "$f" ]]; then
+        mkdir -p "$ASSET_ROOT/$a"
+        TSP_LIB_XOR_KEY="$TSP_LIB_XOR_KEY" \
+          "$ROOT/scripts/encrypt_jni_tspagent.sh" \
+          "$f" \
+          "$ASSET_ROOT/$a/libtspagent.dat" || exit 1
+        echo "  assets: tspn/$a/libtspagent.dat"
+      fi
+    done
+  fi
+  if [[ "${TSP_OMIT_JNILIBS_TSPAGENT:-0}" == "1" ]]; then
+    for pair in "${ANDROID_ABI_PAIRS[@]}"; do
+      a="${pair##*:}"
+      rm -f "$JNILIBS/$a/$LIB_GO" 2>/dev/null || true
+    done
+    echo "  (removed $LIB_GO from jniLibs — use assets + TSP_LIB_XOR_KEY in Gradle)"
+  fi
+fi
+
+if [[ "$DO_IOS" -eq 1 ]]; then
+  if [[ "${TSP_USE_TINYGO:-0}" == "1" && "${TSP_ALLOW_EXPERIMENTAL_TINYGO_CSHARED:-0}" != "1" ]]; then
+    echo "error: tinygo iOS c-archive/c-shared path is experimental; set TSP_ALLOW_EXPERIMENTAL_TINYGO_CSHARED=1 explicitly"
+    exit 1
+  fi
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "error: iOS build needs macOS"
+    exit 1
+  fi
+  command -v xcrun >/dev/null && command -v xcodebuild >/dev/null
+  if [[ "$DO_ANDROID" -eq 0 ]]; then
+    regenerate_header_from_host
+  fi
+  mkdir -p "$OUT_IOS"
+  SDK_DEV="$(xcrun --sdk iphoneos --show-sdk-path)"
+  CC_DEV="$(xcrun --find --sdk iphoneos clang)"
+  CFLAGS_DEV="--target=arm64-apple-ios14.0 -isysroot $SDK_DEV"
+  cc_dev_go="$(pick_omvll_cgo_cc "$CC_DEV" "${TSP_OMVLL_CGO_CC_IOS:-${TSP_OMVLL_CGO_CC:-}}")"
+  if [[ -n "${TSP_OMVLL_CGO_CC:-}${TSP_OMVLL_CGO_CC_IOS:-}" && "$cc_dev_go" != "$CC_DEV" ]]; then
+    echo "  (TspAgent) iOS device cgo: $cc_dev_go"
+  fi
+  (
+    cd "$AGENT_DIR"
+    if [[ "${TSP_USE_TINYGO:-0}" == "1" ]]; then
+      tinygo build -buildmode=c-archive -ldflags "$GOLDFLAGS" \
+        -o "$OUT_IOS/libTspAgent-ios-arm64.a" $MOBILE_MAIN_SUBPKG
+    else
+      CGO_ENABLED=1 GOOS=ios GOARCH=arm64 \
+        CGO_CFLAGS="$CFLAGS_DEV" CGO_LDFLAGS="$CFLAGS_DEV" \
+        CC="$cc_dev_go" \
+        go build -buildmode=c-archive -ldflags "$GOLDFLAGS" \
+          -o "$OUT_IOS/libTspAgent-ios-arm64.a" $MOBILE_MAIN_SUBPKG
+    fi
+  )
+  if [[ -z "${TSP_NO_STRIP:-}" ]]; then
+    strip -S -x "$OUT_IOS/libTspAgent-ios-arm64.a" 2>/dev/null || true
+  fi
+  SDK_SIM="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+  CC_SIM="$(xcrun --find --sdk iphonesimulator clang)"
+  CFLAGS_SIM="--target=arm64-apple-ios14.0-simulator -isysroot $SDK_SIM"
+  cc_sim_go="$(pick_omvll_cgo_cc "$CC_SIM" "${TSP_OMVLL_CGO_CC_IOSSIM:-${TSP_OMVLL_CGO_CC:-}}")"
+  if [[ -n "${TSP_OMVLL_CGO_CC:-}${TSP_OMVLL_CGO_CC_IOSSIM:-}" && "$cc_sim_go" != "$CC_SIM" ]]; then
+    echo "  (TspAgent) iOS sim cgo: $cc_sim_go"
+  fi
+  (
+    cd "$AGENT_DIR"
+    if [[ "${TSP_USE_TINYGO:-0}" == "1" ]]; then
+      tinygo build -buildmode=c-archive -ldflags "$GOLDFLAGS" \
+        -o "$OUT_IOS/libTspAgent-iossim-arm64.a" $MOBILE_MAIN_SUBPKG
+    else
+      CGO_ENABLED=1 GOOS=ios GOARCH=arm64 \
+        CGO_CFLAGS="$CFLAGS_SIM" CGO_LDFLAGS="$CFLAGS_SIM" \
+        CC="$cc_sim_go" \
+        go build -buildmode=c-archive -ldflags "$GOLDFLAGS" \
+          -o "$OUT_IOS/libTspAgent-iossim-arm64.a" $MOBILE_MAIN_SUBPKG
+    fi
+  )
+  if [[ -z "${TSP_NO_STRIP:-}" ]]; then
+    strip -S -x "$OUT_IOS/libTspAgent-iossim-arm64.a" 2>/dev/null || true
+  fi
+  XCFR="$OUT_IOS/TspAgent.xcframework"
+  rm -rf "$XCFR"
+  xcodebuild -create-xcframework \
+    -library "$OUT_IOS/libTspAgent-ios-arm64.a" -headers "$AGENT_DIR/include" \
+    -library "$OUT_IOS/libTspAgent-iossim-arm64.a" -headers "$AGENT_DIR/include" \
+    -output "$XCFR"
+  [[ -d "$XCFR" ]]
+  echo "==> iOS: $XCFR (لینک در Runner؛ برای باینری استاتیک Embed = Do Not Embed)"
+fi
+
+echo "Done. TspAgent: $AGENT_MODULE/pkg/mobilehost + cmd/mobilehost"

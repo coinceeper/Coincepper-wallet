@@ -1,0 +1,24 @@
+name: derivation-parity
+
+on:
+  push:
+    paths:
+      - 'lib/wallet/**'
+      - 'test/derivation_parity_test.dart'
+  pull_request:
+    paths:
+      - 'lib/wallet/**'
+      - 'test/derivation_parity_test.dart'
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Flutter test
+        run: |
+          flutter pub get
+          flutter test test/derivation_parity_test.dart test/wallet_core_smoke_test.dart test/token_metadata_service_test.dart

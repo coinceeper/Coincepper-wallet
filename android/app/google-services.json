@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "189047135032",
+    "project_id": "coinceeper-f2eaf",
+    "storage_bucket": "coinceeper-f2eaf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:189047135032:android:3ff99ffc954ffb40a07fcd",
+        "android_client_info": {
+          "package_name": "com.coinceeper.adl"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBnmgQ6SVmxoAXUq4x5HvfA0bppDD_HO3Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

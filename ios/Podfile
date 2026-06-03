@@ -1,0 +1,96 @@
+# Updated platform version for Firebase v15+ compatibility
+platform :ios, '13.0'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+# macOS/iCloud sometimes creates "file 2.ext" copies inside Pods; nanopb then
+# exposes "pb 2.h" as a public header and breaks GoogleDataTransport (.nanopb).
+def remove_finder_duplicate_pod_files(pods_root)
+  return unless pods_root && Dir.exist?(pods_root)
+
+  Dir.glob(File.join(pods_root, '**', '*')).each do |path|
+    next unless File.file?(path)
+    next unless File.basename(path).match?(/ \d+\.[A-Za-z0-9]+$/)
+
+    FileUtils.rm_f(path)
+  end
+end
+
+pre_install do |_installer|
+  remove_finder_duplicate_pod_files(File.expand_path('Pods', __dir__))
+end
+
+target 'Runner' do
+  # Static linkage so Swift/ObjC pods (url_launcher, webview, sqflite_darwin) resolve the Flutter module.
+  # Dynamic use_frameworks! without :linkage often yields "Flutter/Flutter.h not found" / "Unable to find module dependency: 'Flutter'".
+  use_frameworks! :linkage => :static
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  remove_finder_duplicate_pod_files(installer.sandbox.root)
+
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+
+      # Do not set DEFINES_MODULE / MODULEMAP globally — breaks Flutter engine visibility for plugin pods.
+
+      if target.name.include?('firebase') || target.name.include?('Firebase') || target.name.include?('FLT')
+        config.build_settings['ENABLE_BITCODE'] = 'NO'
+        config.build_settings['OTHER_LDFLAGS'] = '$(inherited) -ObjC'
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = '$(inherited) COCOAPODS=1 FB_SONARKIT_ENABLED=1'
+      end
+    end
+
+    if target.name == 'firebase_messaging'
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        config.build_settings['DEFINES_MODULE'] = 'YES'
+        config.build_settings['CLANG_ENABLE_MODULES'] = 'YES'
+        config.build_settings['SWIFT_COMPILATION_MODE'] = 'wholemodule'
+        config.build_settings['HEADER_SEARCH_PATHS'] = [
+          '$(inherited)',
+          '"${PODS_ROOT}/Headers/Public"',
+          '"${PODS_ROOT}/Headers/Public/Firebase"',
+          '"${PODS_ROOT}/Headers/Private/Firebase"',
+          '"${PODS_ROOT}/Firebase"',
+          '"${PODS_ROOT}/FirebaseCore/FirebaseCore/Sources"',
+          '"${PODS_ROOT}/FirebaseMessaging/FirebaseMessaging/Sources"'
+        ].join(' ')
+        config.build_settings['USER_HEADER_SEARCH_PATHS'] = config.build_settings['HEADER_SEARCH_PATHS']
+      end
+    end
+  end
+end

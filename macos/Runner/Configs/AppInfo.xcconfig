@@ -1,0 +1,18 @@
+// نسخهٔ مارکتینگ و بیلد از pubspec (Flutter-Generated)؛ بدون این include، Xcode روی 47/1.0 قفل می‌ماند.
+#include? "../../Flutter/ephemeral/Flutter-Generated.xcconfig"
+
+// Application-level settings for the Runner target.
+//
+// This may be replaced with something auto-generated from metadata (e.g., pubspec.yaml) in the
+// future. If not, the values below would default to using the project name when this becomes a
+// 'flutter create' template.
+
+// The application's name. By default this is also the title of the Flutter window.
+PRODUCT_NAME = coinceeper
+
+// همان App ID اپ iOS تا با Apple Developer Program شرکت قابل ثبت/امضا باشد (نه .mac.dev که معمولاً در دسترس نیست).
+PRODUCT_BUNDLE_IDENTIFIER = com.coinceeper.adl
+// تیم را در Xcode → Signing & Capabilities انتخاب کنید؛ اینجا ست نکنید تا با اکانت شرکت تداخل نداشته باشد.
+
+// The copyright displayed in application information
+PRODUCT_COPYRIGHT = Copyright © 2025 com.coinceeper. All rights reserved.

@@ -1,0 +1,3 @@
+build/windows/x64/extracted/firebase_cpp_sdk_windows/libs/windows/VS2019/**/*.lib filter=lfs diff=lfs merge=lfs -text
+build/windows/x64/firebase_cpp_sdk_windows_12.7.0.zip filter=lfs diff=lfs merge=lfs -text
+windows/flutter/ephemeral/flutter_windows.dll.pdb filter=lfs diff=lfs merge=lfs -text

@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+"""Write ios/Flutter/DartDefines.xcconfig and android/local.properties from secrets/vm_api_keys.env.
+
+Supports ALL keys: Explorer, TronGrid (3 keys), RPC Pool (dRPC, Ankr, Chainstack, Tenderly, Etox, BlockPI),
+Solana, Polkadot (3 keys), Bitcoin, CoinGecko, plus build-time secrets (HMAC, TLS).
+"""
+import base64
+import sys
+from pathlib import Path
+
+
+def load_env(p: Path) -> dict[str, str]:
+    out: dict[str, str] = {}
+    if not p.is_file():
+        return out
+    for line in p.read_text(encoding='utf-8').splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, _, v = line.partition("=")
+        out[k.strip()] = v.strip().strip('"').strip("'")
+    return out
+
+
+# ── تمام کلیدهای پشتیبانی شده ─────────────────────────────
+ALL_KEYS = [
+    # Explorer
+    "ETHERSCAN_API_KEY",
+    "BSCSCAN_API_KEY",
+    "POLYGONSCAN_API_KEY",
+    "AVALANCHE_API_KEY",
+    "ARBITRUMSCAN_API_KEY",
+    # Tron (3 keys)
+    "TRONGRID_API_KEY_1",
+    "TRONGRID_API_KEY_2",
+    "TRONGRID_API_KEY_3",
+    # RPC Pool — Multi-provider
+    "DRPC_API_KEY",
+    "ANKR_API_KEY",
+    "CHAINSTACK_ETH_TOKEN",
+    "CHAINSTACK_BTC_TOKEN",
+    # Tenderly per-chain
+    "TENDERLY_API_KEY",
+    "TENDERLY_ETH_RPC_URL",
+    "TENDERLY_ETH_WSS_URL",
+    "TENDERLY_POLYGON_RPC_URL",
+    "TENDERLY_POLYGON_WSS_URL",
+    "TENDERLY_ARBITRUM_RPC_URL",
+    "TENDERLY_ARBITRUM_WSS_URL",
+    "TENDERLY_AVALANCHE_RPC_URL",
+    "TENDERLY_AVALANCHE_WSS_URL",
+    # Etox per-chain
+    "ETOX_API_KEY",
+    "ETOX_ETH_RPC_URL",
+    "ETOX_ETH_WSS_URL",
+    "ETOX_ARB_RPC_URL",
+    "ETOX_ARB_WSS_URL",
+    "ETOX_POLYGON_RPC_URL",
+    "ETOX_POLYGON_WSS_URL",
+    # BlockPI per-chain
+    "BLOCKPI_ETH_RPC_URL",
+    "BLOCKPI_ETH_WSS_URL",
+    "BLOCKPI_POLYGON_RPC_URL",
+    "BLOCKPI_POLYGON_WSS_URL",
+    "BLOCKPI_ARBITRUM_RPC_URL",
+    "BLOCKPI_ARBITRUM_WSS_URL",
+    "BLOCKPI_BSC_RPC_URL",
+    "BLOCKPI_BSC_WSS_URL",
+    "BLOCKPI_AVALANCHE_RPC_URL",
+    "BLOCKPI_AVALANCHE_WSS_URL",
+    "BLOCKPI_BTC_RPC_URL",
+    # Solana
+    "SOLANA_RPC_URL",
+    "HELIUS_API_KEY",
+    # Polkadot (7 keys)
+    "SUBSCAN_API_KEY_1",
+    "SUBSCAN_API_KEY_2",
+    "SUBSCAN_API_KEY_3",
+    "SUBSCAN_API_KEY_4",
+    "SUBSCAN_API_KEY_5",
+    "SUBSCAN_API_KEY_6",
+    "SUBSCAN_API_KEY_7",
+    # Bitcoin (6 keys)
+    "BLOCKCYPHER_API_KEY_1",
+    "BLOCKCYPHER_API_KEY_2",
+    "BLOCKCYPHER_API_KEY_3",
+    "BLOCKCYPHER_API_KEY_4",
+    "BLOCKCYPHER_API_KEY_5",
+    "BLOCKCYPHER_API_KEY_6",
+    # Price
+    "COINGECKO_API_KEY",
+    # Build-time secrets
+    "CLIENT_HMAC_SECRET",
+    "TLS_PIN_SHA256",
+]
+
+# ── نگاشت به Android properties ──────────────────────────
+ANDROID_PROP_MAP = {
+    "ETHERSCAN_API_KEY": "etherscan.api.key",
+    "BSCSCAN_API_KEY": "bscscan.api.key",
+    "POLYGONSCAN_API_KEY": "polygonscan.api.key",
+    "AVALANCHE_API_KEY": "snowtrace.api.key",
+    "ARBITRUMSCAN_API_KEY": "arbiscan.api.key",
+    "TRONGRID_API_KEY_1": "trongrid.api.key.1",
+    "TRONGRID_API_KEY_2": "trongrid.api.key.2",
+    "TRONGRID_API_KEY_3": "trongrid.api.key.3",
+    "DRPC_API_KEY": "drpc.api.key",
+    "ANKR_API_KEY": "ankr.api.key",
+    "CHAINSTACK_ETH_TOKEN": "chainstack.eth.token",
+    "CHAINSTACK_BTC_TOKEN": "chainstack.btc.token",
+    "SOLANA_RPC_URL": "solana.rpc.url",
+    "HELIUS_API_KEY": "helius.api.key",
+    "SUBSCAN_API_KEY_1": "subscan.api.key.1",
+    "SUBSCAN_API_KEY_2": "subscan.api.key.2",
+    "SUBSCAN_API_KEY_3": "subscan.api.key.3",
+    "SUBSCAN_API_KEY_4": "subscan.api.key.4",
+    "SUBSCAN_API_KEY_5": "subscan.api.key.5",
+    "SUBSCAN_API_KEY_6": "subscan.api.key.6",
+    "SUBSCAN_API_KEY_7": "subscan.api.key.7",
+    "BLOCKCYPHER_API_KEY_1": "blockcypher.api.key.1",
+    "BLOCKCYPHER_API_KEY_2": "blockcypher.api.key.2",
+    "BLOCKCYPHER_API_KEY_3": "blockcypher.api.key.3",
+    "BLOCKCYPHER_API_KEY_4": "blockcypher.api.key.4",
+    "BLOCKCYPHER_API_KEY_5": "blockcypher.api.key.5",
+    "BLOCKCYPHER_API_KEY_6": "blockcypher.api.key.6",
+    "COINGECKO_API_KEY": "coingecko.api.key",
+}
+
+
+def main() -> None:
+    root = Path(sys.argv[1]).resolve()
+    env_path = root / "secrets/vm_api_keys.env"
+    env = load_env(env_path)
+    if not env:
+        print(f"[WARN] No keys found in {env_path} — skipping")
+        return
+
+    # ── Build dart-define pairs ──────────────────────────
+    pairs: list[str] = []
+    for k in ALL_KEYS:
+        v = env.get(k)
+        if v and v != "" and not v.startswith("YOUR_"):
+            pairs.append(f"{k}={v}")
+
+    if not pairs:
+        print("[WARN] No valid keys found (all are 'YOUR_*' placeholders)")
+        return
+
+    # ── iOS: DartDefines.xcconfig ────────────────────────
+    encoded = base64.b64encode(",".join(pairs).encode()).decode()
+    ios_xc = root / "ios/Flutter/DartDefines.xcconfig"
+    ios_xc.parent.mkdir(parents=True, exist_ok=True)
+    ios_xc.write_text(
+        "// Generated by scripts/apply_pulled_api_keys.py — do not commit.\n"
+        f"EXTRA_DART_DEFINES={encoded}\n"
+        "DART_DEFINES=$(DART_DEFINES),$(EXTRA_DART_DEFINES)\n",
+        encoding="utf-8",
+    )
+    print(f"[OK] Wrote {len(pairs)} dart-defines to {ios_xc.relative_to(root)}")
+
+    # ── Android: local.properties ────────────────────────
+    props_path = root / "android/local.properties"
+    lines: list[str] = []
+    if props_path.is_file():
+        lines = props_path.read_text().splitlines()
+
+    def set_prop(key: str, val: str) -> None:
+        nonlocal lines
+        prefix = f"{key}="
+        lines = [ln for ln in lines if not ln.startswith(prefix)]
+        if val:
+            lines.append(f"{prefix}{val}")
+
+    for dart_key, prop_key in ANDROID_PROP_MAP.items():
+        v = env.get(dart_key, "")
+        if v and not v.startswith("YOUR_"):
+            set_prop(prop_key, v)
+
+    props_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"[OK] Updated {props_path.relative_to(root)} with {len(ANDROID_PROP_MAP)} properties")
+
+    # ── Summary ──────────────────────────────────────────
+    applied = [p.split("=")[0] for p in pairs]
+    print(f"\n[Keys] Applied ({len(applied)}):")
+    for k in applied:
+        print(f"   [+] {k}")
+
+
+if __name__ == "__main__":
+    main()
