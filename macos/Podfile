@@ -1,0 +1,205 @@
+platform :osx, '10.15'
+require 'fileutils'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'ephemeral', 'Flutter-Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure \"flutter pub get\" is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Flutter-Generated.xcconfig, then run \"flutter pub get\""
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_macos_podfile_setup
+
+# macOS/iCloud sometimes creates "file 2.ext" copies inside Pods; nanopb then
+# exposes "pb 2.h" as a public header and breaks GoogleDataTransport (.nanopb).
+def remove_finder_duplicate_pod_files(pods_root)
+  return unless pods_root && Dir.exist?(pods_root)
+
+  Dir.glob(File.join(pods_root, '**', '*')).each do |path|
+    next unless File.file?(path)
+    next unless File.basename(path).match?(/ \d+\.[A-Za-z0-9]+$/)
+
+    FileUtils.rm_f(path)
+  end
+end
+
+FIREBASE_POD_MARKERS = [
+  'FirebaseCore/FirebaseCore/Sources/Public/FirebaseCore/FIRApp.h',
+  'FirebaseMessaging/FirebaseMessaging/Sources/FIRMessaging.m',
+  'GoogleUtilities/GoogleUtilities/AppDelegateSwizzler/Public/GoogleUtilities/GULAppDelegateSwizzler.h',
+  'GoogleUtilities/GoogleUtilities/Privacy/Resources/PrivacyInfo.xcprivacy',
+  'GoogleDataTransport/GoogleDataTransport/GDTCCTLibrary/Private/GDTCCTNanopbHelpers.h',
+].freeze
+
+COCOAPODS_RELEASE_CACHE = File.expand_path('~/Library/Caches/CocoaPods/Pods/Release')
+
+def restore_pod_from_cocoapods_release_cache!(pods_root, pod_name)
+  release_dir = File.join(COCOAPODS_RELEASE_CACHE, pod_name)
+  return false unless Dir.exist?(release_dir)
+
+  version_dir = Dir.children(release_dir).max
+  return false unless version_dir
+
+  src = File.join(release_dir, version_dir)
+  dest = File.join(pods_root, pod_name)
+  FileUtils.rm_rf(dest)
+  system('rsync', '-a', "#{src}/", "#{dest}/")
+end
+
+def restore_missing_firebase_pods_from_cache!(pods_root)
+  return if firebase_pods_missing(pods_root).empty?
+
+  %w[FirebaseCore FirebaseMessaging].each do |pod|
+    marker = FIREBASE_POD_MARKERS.find { |rel| rel.start_with?(pod) }
+    next unless marker
+    next if File.file?(File.join(pods_root, marker))
+
+    restore_pod_from_cocoapods_release_cache!(pods_root, pod)
+  end
+end
+
+def firebase_pods_missing(pods_root)
+  FIREBASE_POD_MARKERS.reject { |rel| File.file?(File.join(pods_root, rel)) }
+end
+
+def repair_incomplete_firebase_pods!(pods_root)
+  return if firebase_pods_missing(pods_root).empty?
+
+  %w[GoogleUtilities GoogleDataTransport nanopb PromisesObjC Firebase FirebaseCore FirebaseCoreInternal FirebaseInstallations FirebaseMessaging].each do |name|
+    path = File.join(pods_root, name)
+    FileUtils.rm_rf(path) if File.exist?(path)
+  end
+end
+
+# FirebaseInstallations/Messaging ship FirebaseCoreInternal.h with @import FirebaseCore.
+def ensure_firebase_core_framework_path!(config)
+  paths = config.build_settings['FRAMEWORK_SEARCH_PATHS'] || '$(inherited)'
+  firebase_core = '"${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCore"'
+  return if paths.include?(firebase_core)
+
+  config.build_settings['FRAMEWORK_SEARCH_PATHS'] = "#{paths} #{firebase_core}"
+end
+
+FIREBASE_CORE_FRAMEWORK_DEPENDENTS = %w[
+  FirebaseInstallations
+  FirebaseMessaging
+  firebase_core
+  firebase_messaging
+].freeze
+
+def patch_firebase_xcconfigs!(macos_dir)
+  FIREBASE_CORE_FRAMEWORK_DEPENDENTS.each do |pod|
+    Dir.glob(File.join(macos_dir, 'Pods/Target Support Files', pod, '*.xcconfig')).each do |path|
+      txt = File.read(path)
+      needle = '"${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCore"'
+      next if txt.include?(needle)
+
+      fixed = txt.sub(
+        /^FRAMEWORK_SEARCH_PATHS = \$\(inherited\)/,
+        "FRAMEWORK_SEARCH_PATHS = $(inherited) #{needle}"
+      )
+      File.write(path, fixed) if fixed != txt
+    end
+  end
+end
+
+def verify_firebase_pods_integrity!(pods_root)
+  missing = firebase_pods_missing(pods_root)
+  return if missing.empty?
+
+  raise <<~MSG
+    CocoaPods install is incomplete (files missing under macos/Pods).
+    Missing:
+    #{missing.map { |p| "  - #{File.join(pods_root, p)}" }.join("\n")}
+
+    Fix:
+      cd macos && rm -rf Pods && pod install
+    If pod install hangs (iCloud), run from a /tmp symlink to the repo, then pod install again.
+    Keep the project folder out of iCloud Drive / disable "Optimize Mac Storage" for this repo.
+  MSG
+end
+
+pre_install do |_installer|
+  pods = File.expand_path('Pods', __dir__)
+  if Dir.exist?(pods)
+    remove_finder_duplicate_pod_files(pods)
+    restore_missing_firebase_pods_from_cache!(pods)
+    repair_incomplete_firebase_pods!(pods)
+  end
+end
+
+target 'Runner' do
+  use_frameworks! :linkage => :static
+
+  flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  remove_finder_duplicate_pod_files(installer.sandbox.root)
+
+  # iCloud / Finder sometimes creates "Name 2" copies inside Pods → broken includes & lipo.
+  pods_root = installer.sandbox.root.to_s
+  Dir.glob(File.join(pods_root, '* 2')).each do |dup|
+    FileUtils.rm_rf(dup)
+  end
+  manifest_dup = File.join(pods_root, 'Manifest 2.lock')
+  File.delete(manifest_dup) if File.file?(manifest_dup)
+
+  installer.pods_project.targets.each do |target|
+    flutter_additional_macos_build_settings(target)
+    target.build_configurations.each do |config|
+      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+
+      if target.name == 'GoogleDataTransport'
+        config.build_settings['HEADER_SEARCH_PATHS'] = [
+          '$(inherited)',
+          '"${PODS_TARGET_SRCROOT}/"'
+        ].join(' ')
+        config.build_settings['USER_HEADER_SEARCH_PATHS'] = config.build_settings['HEADER_SEARCH_PATHS']
+      end
+
+      if FIREBASE_CORE_FRAMEWORK_DEPENDENTS.include?(target.name)
+        config.build_settings['CLANG_ENABLE_MODULES'] = 'YES'
+        ensure_firebase_core_framework_path!(config)
+      end
+
+      next unless ['Release', 'Profile'].include?(config.name)
+
+      # خروجی Release/Profile باید روی هر دو معماری اجرا شود، نه فقط ماشین بیلد.
+      config.build_settings['ONLY_ACTIVE_ARCH'] = 'NO'
+      config.build_settings.delete('EXCLUDED_ARCHS')
+    end
+  end
+
+  restore_missing_firebase_pods_from_cache!(pods_root)
+  verify_firebase_pods_integrity!(pods_root)
+
+  patch_firebase_xcconfigs!(__dir__)
+
+  # CocoaPods گاهی PB_ENABLE_MALLOC و GDTCOR_VERSION را بدون فاصله می‌چسباند → خطای nanopb
+  Dir.glob(File.expand_path('Pods/Target Support Files/GoogleDataTransport/*.xcconfig', __dir__)).each do |path|
+    txt = File.read(path)
+    fixed = txt.gsub('PB_ENABLE_MALLOC=1GDTCOR_VERSION', 'PB_ENABLE_MALLOC=1 GDTCOR_VERSION')
+    File.write(path, fixed) if fixed != txt
+  end
+end

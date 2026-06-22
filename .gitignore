@@ -1,0 +1,81 @@
+# Flutter
+**/build/
+**/ios/.generated/
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+ios/Podfile.lock
+**/ios/Flutter/Flutter.podspec
+**/ios/Runner.xcodeproj/project.xcworkspace/
+**/ios/Runner.xcodeproj/xcuserdata/
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/.flutter-plugins
+**/ios/.flutter-plugins-dependencies
+.dart_tool/
+.dart_tool_broken/
+
+# Duplicate / backup / temp files (open-source sanitization)
+ios/Flutter/Flutter *.podspec
+ios/Flutter/ephemeral */
+android/gradle/wrapper/gradle-wrapper *.{jar,properties}
+pubspec *.lock
+.packages
+.pub/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+.vscode/
+**/android/.gradle/
+**/android/local.properties
+**/android/key.properties
+**/android/app/google-services.json
+**/android/app/*.jks
+**/android/app/*.keystore
+**/android/app/firebase_app_id_file.json
+**/android/captures/
+**/macos/Pods/
+**/linux/flutter/ephemeral/
+**/linux/flutter/ephemeral/.plugin_symlinks/
+**/web/.dart_tool/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Agent
+agent/
+agent-src.tar.gz
+bash/
+bin/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets / Environment
+.env
+.env.local
+*.env
+**/*.jks
+**/*.keystore
+google-services.json
+firebase_app_id_file.json
+service-account.json
+*.p12
+*.p8
+
+# Certificates & signing
+*.cer
+*.pfx
+
+# Logs
+*.log
+
+# Firebase admin SDK private key (DO NOT COMMIT)
+coinceeper-f2eaf-firebase-adminsdk-fbsvc-4f2bc9645c.json
+
+# Xcode config with potential secrets
+ios/Flutter/DartDefines.xcconfig
+**/DartDefines.xcconfig

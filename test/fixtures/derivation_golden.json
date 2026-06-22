@@ -1,0 +1,137 @@
+[
+  {
+    "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+    "addresses": {
+      "Bitcoin": {
+        "public_address": "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu",
+        "private_key": "KyZpNDKnfs94vbrwhJneDi77V6jF64PWPF8x5cdJb8ifgg2DUc9d"
+      },
+      "Ethereum": {
+        "public_address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
+        "private_key": "1ab42cc412b618bdea3a599e3c9bae199ebf030895b039e9db1e30dafb12b727"
+      },
+      "Tron": {
+        "public_address": "TUEZSdKsoDHQMeZwihtdoBiN46zxhGWYdH",
+        "private_key": "b5a4cea271ff424d7c31dc12a3e43e401df7a40d7412a15750f3f0b6b5449a28"
+      },
+      "Binance Smart Chain": {
+        "public_address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
+        "private_key": "1ab42cc412b618bdea3a599e3c9bae199ebf030895b039e9db1e30dafb12b727"
+      },
+      "Polygon": {
+        "public_address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
+        "private_key": "1ab42cc412b618bdea3a599e3c9bae199ebf030895b039e9db1e30dafb12b727"
+      },
+      "Avalanche": {
+        "public_address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
+        "private_key": "1ab42cc412b618bdea3a599e3c9bae199ebf030895b039e9db1e30dafb12b727"
+      },
+      "Arbitrum": {
+        "public_address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
+        "private_key": "1ab42cc412b618bdea3a599e3c9bae199ebf030895b039e9db1e30dafb12b727"
+      },
+      "Polkadot": {
+        "public_address": "14E9StbjYhJiAfsNMEcq5tETq79Q6EqaGyebdziY214hNWDH",
+        "private_key": "19361288ec9af79fd1ad38c5ed65418ca9f435367b174e6ac9cdde85dacb42d4"
+      },
+      "XRP": {
+        "public_address": "rHsMGQEkVNJmpGWs8XUBoTBiAAbwxZN5v3",
+        "private_key": "90802a50aa84efb6cdb225f17c27616ea94048c179142fecf03f4712a07ea7a4"
+      },
+      "Solana": {
+        "public_address": "B9sVeu4rJU12oUrUtzjc6BSNuEXdfvurZkdcaTVkP2LY",
+        "private_key": "286b4b30f808ed46e986e5536939c4177b61588ac4a3080d228cb47edd798164"
+      }
+    }
+  },
+  {
+    "mnemonic": "legal winner thank year wave sausage worth useful legal winner thank yellow",
+    "addresses": {
+      "Bitcoin": {
+        "public_address": "bc1qgkju4yvvtuz0s8vqn837q396jezu2h8ex7gk98",
+        "private_key": "L5H8k3AWz1uWMJAucxquWRZFfkkG69q4AHEf9AWpwzW1PYhLzmBP"
+      },
+      "Ethereum": {
+        "public_address": "0x58A57ed9d8d624cBD12e2C467D34787555bB1b25",
+        "private_key": "33fa40f84e854b941c2b0436dd4a256e1df1cb41b9c1c0ccc8446408c19b8bf9"
+      },
+      "Tron": {
+        "public_address": "TUJ2YbSDGtCqzRz7quPQidRCMC98jDAPXc",
+        "private_key": "abde94314a030ae8860a58db8adde7fc962cca2455db9d2979e480038c49dcbc"
+      },
+      "Binance Smart Chain": {
+        "public_address": "0x58A57ed9d8d624cBD12e2C467D34787555bB1b25",
+        "private_key": "33fa40f84e854b941c2b0436dd4a256e1df1cb41b9c1c0ccc8446408c19b8bf9"
+      },
+      "Polygon": {
+        "public_address": "0x58A57ed9d8d624cBD12e2C467D34787555bB1b25",
+        "private_key": "33fa40f84e854b941c2b0436dd4a256e1df1cb41b9c1c0ccc8446408c19b8bf9"
+      },
+      "Avalanche": {
+        "public_address": "0x58A57ed9d8d624cBD12e2C467D34787555bB1b25",
+        "private_key": "33fa40f84e854b941c2b0436dd4a256e1df1cb41b9c1c0ccc8446408c19b8bf9"
+      },
+      "Arbitrum": {
+        "public_address": "0x58A57ed9d8d624cBD12e2C467D34787555bB1b25",
+        "private_key": "33fa40f84e854b941c2b0436dd4a256e1df1cb41b9c1c0ccc8446408c19b8bf9"
+      },
+      "Polkadot": {
+        "public_address": "126GHzxFEeE72NcDL5x1YuEenUL7fj93kbVuQdjPsFb6xTv3",
+        "private_key": "c867a425ce83e3fbec36f1cb17bdc90510fee7ac59640d15241021fef69408c1"
+      },
+      "XRP": {
+        "public_address": "rpaLPza5oxhJ7V8nFDwPm9F7kmZ16uc8do",
+        "private_key": "a4142431371c08eee8722133be61f911f8aa4ebc4e2a89d2ea403b8ff5c1984f"
+      },
+      "Solana": {
+        "public_address": "9wozedYqw3Umf1x1kiKsgUcBzT6U8NrQuqWqohUo6QGj",
+        "private_key": "3426c9068d3a9ee9bfd3dcdebcbce240224347a3c97498bf2d3a5edcfc69ab02"
+      }
+    }
+  },
+  {
+    "mnemonic": "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong",
+    "addresses": {
+      "Bitcoin": {
+        "public_address": "bc1qk0a9hr7wjfxeenz9nwenw9flhq0tmsf6vsgnn2",
+        "private_key": "L1ypUvV7SHhvuC4FgueiGLhCf8JSpUhtQ5ojN824KdA88pGcykm9"
+      },
+      "Ethereum": {
+        "public_address": "0xfc2077CA7F403cBECA41B1B0F62D91B5EA631B5E",
+        "private_key": "7af65ba4dd53f23495dcb04995e96f47c243217fc279f10795871b725cd009ae"
+      },
+      "Tron": {
+        "public_address": "TCp2vg4MrkHQqTQLtCfGktdgaH99MFR88g",
+        "private_key": "501b6e7bc9a1ff6de93df19852bdbf43e55b4217e1cc496dbfc006c7d19a50c4"
+      },
+      "Binance Smart Chain": {
+        "public_address": "0xfc2077CA7F403cBECA41B1B0F62D91B5EA631B5E",
+        "private_key": "7af65ba4dd53f23495dcb04995e96f47c243217fc279f10795871b725cd009ae"
+      },
+      "Polygon": {
+        "public_address": "0xfc2077CA7F403cBECA41B1B0F62D91B5EA631B5E",
+        "private_key": "7af65ba4dd53f23495dcb04995e96f47c243217fc279f10795871b725cd009ae"
+      },
+      "Avalanche": {
+        "public_address": "0xfc2077CA7F403cBECA41B1B0F62D91B5EA631B5E",
+        "private_key": "7af65ba4dd53f23495dcb04995e96f47c243217fc279f10795871b725cd009ae"
+      },
+      "Arbitrum": {
+        "public_address": "0xfc2077CA7F403cBECA41B1B0F62D91B5EA631B5E",
+        "private_key": "7af65ba4dd53f23495dcb04995e96f47c243217fc279f10795871b725cd009ae"
+      },
+      "Polkadot": {
+        "public_address": "14KhjMiGmhNWRJArstry9dnWrvPmz3P5xeoUrXM9ZYxhLodX",
+        "private_key": "fed49d08cd9b37dd960f254caedb33fc4ab2c0de665d901ebc1b2f41375dfc36"
+      },
+      "XRP": {
+        "public_address": "rUPzi4ZwoYxi7peKCqUkzqEuSrzSRyLguV",
+        "private_key": "6501276b9d7f646742feb12fd066e107af8c1e26e4ad7c2694279d44c43bdfb2"
+      },
+      "Solana": {
+        "public_address": "AbwHhAquPXvDfxvWEh1b4mG969DQF9wJQSK5k8XKSKtG",
+        "private_key": "a2941e100d4836e86550aded68fcb8dde6dfe06a518c5d668c6eb887abfe6cd5"
+      }
+    }
+  }
+]

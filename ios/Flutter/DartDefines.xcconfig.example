@@ -1,0 +1,6 @@
+// Copy to DartDefines.xcconfig (gitignored) and set your Etherscan key.
+// Generate EXTRA_DART_DEFINES:
+//   python3 -c "import base64; print(base64.b64encode(b'ETHERSCAN_API_KEY=YOUR_KEY').decode())"
+//
+// EXTRA_DART_DEFINES=RUVUSVJTQ0FOX0FQSV9LRVk9WU9VUl9LRVk=
+// DART_DEFINES=$(DART_DEFINES),$(EXTRA_DART_DEFINES)

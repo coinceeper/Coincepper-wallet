@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+	<title>Coinceeper</title>
+	<organization>com.coinceeper</organization>
+	<domains enable_localSystem="true"/>
+	<options customize="never" require-scripts="true" rootVolumeOnly="true"/>
+	<product id="com.coinceeper.pkg.product" version="__PKG_VERSION__"/>
+	<welcome file="welcome.html" mime-type="text/html"/>
+	<license file="license.txt" mime-type="text/plain"/>
+	<conclusion file="conclusion.html" mime-type="text/html"/>
+	<choices-outline>
+		<line choice="com.coinceeper.adl.pkg.app"/>
+	</choices-outline>
+	<choice id="com.coinceeper.adl.pkg.app" visible="true" title="Coinceeper" description="Installs Coinceeper into Applications.">
+		<pkg-ref id="com.coinceeper.adl.pkg.app"/>
+	</choice>
+	<pkg-ref id="com.coinceeper.adl.pkg.app" version="__PKG_VERSION__" auth="Root">component.pkg</pkg-ref>
+</installer-gui-script>

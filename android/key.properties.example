@@ -1,0 +1,22 @@
+# Copy to one of these locations (never commit the real key.properties / .jks to git):
+#   android/key.properties                    ← default Flutter doc
+#   android/signing/key.properties
+#   android/app/key.properties
+#   cc flutter/key.properties                   ← repo root next to pubspec
+#   cc flutter/keys/key.properties
+#
+# storeFile path inside key.properties:
+#   - Relative paths resolve first next to this file, then under android/
+#   - Example: storeFile=upload-keystore.jks with file in android/ or same folder as key.properties
+#
+# Your Play Console expects upload certificate SHA1:
+#   48:E3:4E:35:FD:15:C7:F8:C6:4B:8B:4F:92:D2:8B:62:57:D2:CA:05
+#
+# Verify your .jks before building:
+#   keytool -list -v -keystore YOUR.jks -alias YOUR_ALIAS
+#   (check "SHA1" under Certificate fingerprints)
+#
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=upload
+storeFile=upload-keystore.jks
